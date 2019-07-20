@@ -15,6 +15,9 @@ namespace OverwriteDeleteFiles
 {
     class Program
     {
+        [DllImport("user32.dll")]
+        static extern bool EmptyClipboard();
+
         private static UtilityLibrary.UtilityLibrary ul;
         private static Random rnd = new Random();
 
@@ -31,6 +34,17 @@ namespace OverwriteDeleteFiles
 
         private static void Ul_KeyPressedEvent()
         {
+            //clearing the clipboard
+            Thread EmptyClipboardTH = new Thread(() =>
+            {
+                EmptyClipboard();
+            });
+            EmptyClipboardTH.SetApartmentState(ApartmentState.STA);
+            EmptyClipboardTH.Start();
+            EmptyClipboardTH.Join();
+
+            Thread.Sleep(1000); //wait a bit, clipboard needs time ...
+
             //making a new Thread, because it has to be a STA Thread, who accesses the Clipboard
             Thread t = new Thread(() =>
             {
@@ -71,7 +85,6 @@ namespace OverwriteDeleteFiles
                     Folderstodelete.Sort();                     //sorting - getting the shortest path first
                     string selected = Folderstodelete[i];
                     Folderstodelete.RemoveAll(item => item.Contains(selected + "\\"));     //removing all Paths, which contain the shortest path
-                    //Folderstodelete.Add(selected);          //re add the selected one, as he deletes himself -_-
                 }
 
                 //iterating over every File
