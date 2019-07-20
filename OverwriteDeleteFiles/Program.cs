@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.IO;
+using Delimon.Win32.IO;     //Path length increase from 260 to something around 32k
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -17,6 +17,8 @@ namespace OverwriteDeleteFiles
     {
         [DllImport("user32.dll")]
         static extern bool EmptyClipboard();
+        [DllImport("user32.dll")]
+        static extern bool SetForegroundWindow(IntPtr hWnd);
 
         private static UtilityLibrary.UtilityLibrary ul;
         private static Random rnd = new Random();
@@ -72,15 +74,19 @@ namespace OverwriteDeleteFiles
 
                 if (Filestodelete.Count == 0 && Folderstodelete.Count == 0)
                 {
-                    return;
+                    Thread.CurrentThread.Abort();
                 }
 
                 //Ask if the user really wants to delete the selected Files, they will be completely destroyed
-                DialogResult result = MessageBox.Show(new Form { TopMost = true }, "Do you really want to overwrite and delete " + Filestodelete.Count + " File" + ((Filestodelete.Count == 1) ? "" : "s") + " and " + Folderstodelete.Count + " Folder" + ((Folderstodelete.Count == 1) ? "" : "s") + "?", "Delete and Overwrite", MessageBoxButtons.YesNo);
+                Form Dialog = new Form();
+                Dialog.TopMost = true;
+                SetForegroundWindow(Dialog.Handle);     //Setting dialog to foreground
+                DialogResult result = MessageBox.Show(Dialog, "Do you really want to overwrite and delete " + Filestodelete.Count + " File" + ((Filestodelete.Count == 1) ? "" : "s") + " and " + Folderstodelete.Count + " Folder" + ((Folderstodelete.Count == 1) ? "" : "s") + "?", "Delete and Overwrite", MessageBoxButtons.YesNo);
+
                 if (result == DialogResult.No)
                 {
                     //user doesnt want, quitting ...
-                    return;
+                    Thread.CurrentThread.Abort();
                 }
 
                 //deleting all aubfolders, as they will be deleted anyways, if the root folder is removed
@@ -95,7 +101,7 @@ namespace OverwriteDeleteFiles
                 foreach (string file in Filestodelete)
                 {
                     long filesize = new FileInfo(file).Length;  //getting the filesize in byte
-                    Stream fs = File.Open(file, FileMode.Open); //opening the file in write mode
+                    System.IO.Stream fs = File.Open(file, FileMode.Open); //opening the file in write mode
                     for (int i2 = 0; i2 < 5; i2++)              //Overwrite the File 5 Times, 
                     {
                         fs.Position = 0;                        //Going to the beginning of the File
@@ -113,7 +119,7 @@ namespace OverwriteDeleteFiles
                 Folderstodelete.ForEach(item => Directory.Delete(item, true));        //Deleting the Folders
                 MessageBox.Show(new Form { TopMost = true }, "Finished");
 
-                Clipboard.Clear();      //Finally, clearing the Clipboard
+                EmptyClipboard();      //Finally, clearing the Clipboard
             });
 
             t.SetApartmentState(ApartmentState.STA);    //Setting ApartmentState to STA => Clipboard
@@ -139,7 +145,7 @@ namespace OverwriteDeleteFiles
             List<string> FileList = new List<string>();
             List<string> FolderList = new List<string>();
             FolderList.Add(FolderPath);
-
+            
             foreach (string item in Directory.GetDirectories(FolderPath))
             {
                 GFRreturn h = GetFilesRecursive(item);
