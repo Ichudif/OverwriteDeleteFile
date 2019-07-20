@@ -57,12 +57,16 @@ namespace OverwriteDeleteFiles
                 StringCollection files = Clipboard.GetFileDropList();   //Getting the copied Files from the clipboard
                 foreach (string item in files)
                 {
-                    if (File.Exists(item) || Directory.Exists(item))  //checking if these Files/Folders do exist
+                    if (Directory.Exists(item))  //checking if these Files/Folders do exist
                     {
                         GFRreturn gF = GetFilesRecursive(item);
 
                         Filestodelete.AddRange(gF.FileList.Where(item2 => !Filestodelete.Contains(item2)));
                         Folderstodelete.AddRange(gF.FolderList.Where(item2 => !Folderstodelete.Contains(item2)));
+                    }
+                    else if (File.Exists(item))
+                    {
+                        Filestodelete.Add(item);
                     }
                 }
 
@@ -72,7 +76,7 @@ namespace OverwriteDeleteFiles
                 }
 
                 //Ask if the user really wants to delete the selected Files, they will be completely destroyed
-                DialogResult result = MessageBox.Show("Do you really want to overwrite and delete " + Filestodelete.Count + " Files and " + Folderstodelete.Count + " Folders?", "Delete and Overwrite", MessageBoxButtons.YesNo);
+                DialogResult result = MessageBox.Show(new Form { TopMost = true }, "Do you really want to overwrite and delete " + Filestodelete.Count + " File" + ((Filestodelete.Count == 1) ? "" : "s") + " and " + Folderstodelete.Count + " Folder" + ((Folderstodelete.Count == 1) ? "" : "s") + "?", "Delete and Overwrite", MessageBoxButtons.YesNo);
                 if (result == DialogResult.No)
                 {
                     //user doesnt want, quitting ...
@@ -107,7 +111,7 @@ namespace OverwriteDeleteFiles
                 }
 
                 Folderstodelete.ForEach(item => Directory.Delete(item, true));        //Deleting the Folders
-                MessageBox.Show("Finished");
+                MessageBox.Show(new Form { TopMost = true }, "Finished");
 
                 Clipboard.Clear();      //Finally, clearing the Clipboard
             });
@@ -142,10 +146,12 @@ namespace OverwriteDeleteFiles
                 FileList.AddRange(h.FileList);
                 FolderList.AddRange(h.FolderList);
             }
+
             foreach (string item in Directory.GetFiles(FolderPath))
             {
                 FileList.Add(item);
             }
+
 
             GFRreturn returnme = new GFRreturn();
             returnme.FileList = FileList;
