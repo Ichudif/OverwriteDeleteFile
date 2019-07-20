@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using Delimon.Win32.IO;     //Path length increase from 260 to something around 32k
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -59,16 +59,16 @@ namespace OverwriteDeleteFiles
                 StringCollection files = Clipboard.GetFileDropList();   //Getting the copied Files from the clipboard
                 foreach (string item in files)
                 {
-                    if (Directory.Exists(item))  //checking if these Files/Folders do exist
+                    if (File.Exists(item))
+                    {
+                        Filestodelete.Add(item);
+                    }
+                    else if (Directory.Exists(item))  //checking if these Files/Folders do exist
                     {
                         GFRreturn gF = GetFilesRecursive(item);
 
                         Filestodelete.AddRange(gF.FileList.Where(item2 => !Filestodelete.Contains(item2)));
                         Folderstodelete.AddRange(gF.FolderList.Where(item2 => !Folderstodelete.Contains(item2)));
-                    }
-                    else if (File.Exists(item))
-                    {
-                        Filestodelete.Add(item);
                     }
                 }
 
@@ -145,12 +145,18 @@ namespace OverwriteDeleteFiles
             List<string> FileList = new List<string>();
             List<string> FolderList = new List<string>();
             FolderList.Add(FolderPath);
-            
-            foreach (string item in Directory.GetDirectories(FolderPath))
+            try
             {
-                GFRreturn h = GetFilesRecursive(item);
-                FileList.AddRange(h.FileList);
-                FolderList.AddRange(h.FolderList);
+                foreach (string item in Directory.GetDirectories(FolderPath + "\\"))
+                {
+                    GFRreturn h = GetFilesRecursive(item);
+                    FileList.AddRange(h.FileList);
+                    FolderList.AddRange(h.FolderList);
+                }
+            }
+            catch
+            {
+
             }
 
             foreach (string item in Directory.GetFiles(FolderPath))
