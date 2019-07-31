@@ -22,6 +22,7 @@ namespace OverwriteDeleteFiles
 
         private static UtilityLibrary.UtilityLibrary ul;
         private static Random rnd = new Random();
+        private const int NUMBEROVERWRITES = 5;
 
         static void Main(string[] args)
         {
@@ -47,7 +48,7 @@ namespace OverwriteDeleteFiles
 
             Thread.Sleep(1000); //wait a bit, clipboard needs time ...
 
-            //making a new Thread, because it has to be a STA Thread, who accesses the Clipboard
+            //create a new Thread, because it has to be a STA Thread, who accesses the Clipboard
             Thread t = new Thread(() =>
             {
                 //Creating the ctrl + C simulator, so that the selected files are being copied to the clipboard
@@ -57,7 +58,8 @@ namespace OverwriteDeleteFiles
                 List<string> Filestodelete = new List<string>();
                 List<string> Folderstodelete = new List<string>();
                 StringCollection files = Clipboard.GetFileDropList();   //Getting the copied Files from the clipboard
-                foreach (string item in files)
+                List<string> filesList = files.Cast<string>().ToList();
+                foreach (string item in filesList)
                 {
                     if (File.Exists(item))
                     {
@@ -81,7 +83,10 @@ namespace OverwriteDeleteFiles
                 Form Dialog = new Form();
                 Dialog.TopMost = true;
                 SetForegroundWindow(Dialog.Handle);     //Setting dialog to foreground
-                DialogResult result = MessageBox.Show(Dialog, "Do you really want to overwrite and delete " + Filestodelete.Count + " File" + ((Filestodelete.Count == 1) ? "" : "s") + " and " + Folderstodelete.Count + " Folder" + ((Folderstodelete.Count == 1) ? "" : "s") + "?", "Delete and Overwrite", MessageBoxButtons.YesNo);
+
+                string Filelist = "";
+                filesList.ForEach(item => Filelist += "\n" + item);
+                DialogResult result = MessageBox.Show(Dialog, "Do you really want to overwrite and delete " + Filestodelete.Count + " File" + ((Filestodelete.Count == 1) ? "" : "s") + " and " + Folderstodelete.Count + " Folder" + ((Folderstodelete.Count == 1) ? "" : "s") + "?\nFiles:" + Filelist, "Delete and Overwrite", MessageBoxButtons.YesNo);
 
                 if (result == DialogResult.No)
                 {
@@ -98,22 +103,34 @@ namespace OverwriteDeleteFiles
                 }
 
                 //iterating over every File
+                int Filecount = 1;
                 foreach (string file in Filestodelete)
                 {
                     long filesize = new FileInfo(file).Length;  //getting the filesize in byte
                     System.IO.Stream fs = File.Open(file, FileMode.Open); //opening the file in write mode
-                    for (int i2 = 0; i2 < 5; i2++)              //Overwrite the File 5 Times, 
+                    for (int i2 = 0; i2 < NUMBEROVERWRITES; i2++)              //Overwrite the File 5 Times, 
                     {
+                        //pb2.UpdateBars(Overwritecount: i2 + 1);
+
+                        Byte[] b;
                         fs.Position = 0;                        //Going to the beginning of the File
-                        for (int i = 0; i < filesize; i++)
+                        for (int i = 0; i < filesize / 1024; i++)
                         {
-                            Byte[] b = new Byte[10];
-                            rnd.NextBytes(b);                   //Creating 10 random Bytes
-                            fs.WriteByte(b[rnd.Next(0, 10)]);   //Take a random one of them and overwrite the existing
+                            b = new Byte[1024];
+                            rnd.NextBytes(b);                   //Creating 1024 random Bytes
+                            fs.Write(b, 0, 1024);               //Write 1024 Bytes to the File
+                            //pb2.UpdateBars(Fileprogress: (int)(((i + 1) * 1024) / filesize));
                         }
+
+                        long remainder = filesize % 1024;       //get the number of bytes, which have not been overwritten
+                        b = new Byte[remainder];
+                        rnd.NextBytes(b);
+                        fs.Write(b, 0, (int)remainder);         //writing the remainder of bytes to the file
                     }
                     fs.Close();         //Close File
                     File.Delete(file);  //Delete File
+                    Filecount++;
+                    //pb2.UpdateBars(Filecount: Filecount);
                 }
 
                 Folderstodelete.ForEach(item => Directory.Delete(item, true));        //Deleting the Folders
